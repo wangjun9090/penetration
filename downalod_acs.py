@@ -1,12 +1,11 @@
 # =============================================================================
-# FINAL FIXED U.S. COUNTIES CENSUS DATA DOWNLOADER (2023 ACS + 2020 Urban + CDC PLACES)
-# Fixes: categoryid as integer (no quotes), proper encoding, auto-download urban Excel
+# FIXED U.S. COUNTIES CENSUS DATA DOWNLOADER (2023 ACS + 2020 Urban + CDC PLACES)
+# Fixes: Correct variables, year=2023, merges, calculations, auto-download urban
 # =============================================================================
 
 import pandas as pd
 import requests
 import urllib.parse
-import zipfile
 from io import BytesIO
 
 # ==================== YOUR CENSUS API KEY ====================
@@ -21,91 +20,142 @@ df_fips["FIPS"] = df_fips["state"] + df_fips["county"]
 df_fips["County"] = df_fips["NAME"].str.replace(" County", "", regex=False).str.split(",", expand=True)[0]
 df_fips["State"] = df_fips["NAME"].str.split(", ", expand=True)[1].str.upper()
 df_counties = df_fips[["FIPS", "County", "State"]].copy()
-print(f"→ Found {len(df_counties)} counties")
+print(f"-> Found {len(df_counties)} counties")
 
 # ------------------- 2. Core ACS variables (2023 ACS 5-year) -------------------
-core_vars = "NAME,B19013_001E,DP02_0010PE,DP02_0066PE,DP05_0023PE,DP05_0024PE,DP05_0077PE,B28010_002PE"
-# For movers 65+: Approximate with B07003 (geographic mobility by age)
-mover_vars = "NAME,B07003_013E,B07003_014E,B07003_015E,B07003_016E,B07003_017E,B07003_018E,B07003_019E,B07003_020E,B07003_021E,B07003_022E"
-# For 65+ pop: B01001 age brackets
-age_vars = "NAME,B01001_020E,B01001_021E,B01001_022E,B01001_023E,B01001_024E,B01001_025E,B01001_044E,B01001_045E,B01001_046E,B01001_047E,B01001_048E,B01001_049E,S2801_C02_014E"
-core_url = f"https://api.census.gov/data/2023/acs/acs5?get={core_vars}&for=county:*&key={API_KEY}"
-mover_url = f"https://api.census.gov/data/2023/acs/acs5?get={mover_vars}&for=county:*&key={API_KEY}"
-age_url = f"https://api.census.gov/data/2023/acs/acs5?get={age_vars}&for=county:*&key={API_KEY}"
+# Detailed Tables (B prefix) - Base endpoint
+# B01001_001E: Total Population
+# B07001: Mobility by Age
+# 014-016 (Total 65+), 030-032 (Same House 65+), 046-048 (Moved Same County 65+)
+detailed_vars = "NAME,B19013_001E,B28010_001E,B28010_002E,B01001_001E,B07001_014E,B07001_015E,B07001_016E,B07001_030E,B07001_031E,B07001_032E,B07001_046E,B07001_047E,B07001_048E" 
+# Data Profiles (DP prefix) - /profile endpoint
+profile_vars = "NAME,DP02_0010PE,DP02_0066PE,DP05_0023PE,DP05_0024PE,DP05_0082PE" # Fixed White % (0082PE)
+# Subject Tables (S prefix) - /subject endpoint
+# S2801_C02_005E: Pct Households with Smartphone
+subject_vars = "NAME,S2801_C02_014E,S2801_C02_005E"
+# Age 65+ total
+age_vars = "NAME,B01001_020E,B01001_021E,B01001_022E,B01001_023E,B01001_024E,B01001_025E,B01001_044E,B01001_045E,B01001_046E,B01001_047E,B01001_048E,B01001_049E"
 
-df_core = pd.DataFrame(requests.get(core_url).json()[1:], columns=requests.get(core_url).json()[0])
-df_mover = pd.DataFrame(requests.get(mover_url).json()[1:], columns=requests.get(mover_url).json()[0])
-df_age = pd.DataFrame(requests.get(age_url).json()[1:], columns=requests.get(age_url).json()[0])
+def fetch_acs_data(vars_list, url_suffix, endpoint="https://api.census.gov/data/2023/acs/acs5"):
+    url = f"{endpoint}?get={vars_list}&for=county:*&key={API_KEY}"
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        if len(data) < 2:
+            raise ValueError("Empty data")
+        df = pd.DataFrame(data[1:], columns=data[0])
+        df["FIPS"] = df["state"] + df["county"]
+        # Drop redundant columns to prevent merge errors
+        cols_to_drop = ["state", "county", "NAME"]
+        df = df.drop(columns=[c for c in cols_to_drop if c in df.columns])
+        return df
+    except Exception as e:
+        print(f"Error fetching {url_suffix}: {e}")
+        return pd.DataFrame()
 
-# Merge all ACS data
-df_acs = df_core.merge(df_mover, on=['NAME', 'state', 'county'], how='outer').merge(df_age, on=['NAME', 'state', 'county'], how='outer')
-df_acs["FIPS"] = df_acs["state"] + df_acs["county"]
+# Fetch batches
+df_detailed = fetch_acs_data(detailed_vars, "detailed")
+df_profile = fetch_acs_data(profile_vars, "profile", "https://api.census.gov/data/2023/acs/acs5/profile")
+df_subject = fetch_acs_data(subject_vars, "subject", "https://api.census.gov/data/2023/acs/acs5/subject")
+df_age = fetch_acs_data(age_vars, "age")
 
-# Merge with counties
+# Merge on FIPS
+df_acs = df_detailed.merge(df_profile, on="FIPS", how="outer") \
+    .merge(df_subject, on="FIPS", how="outer") \
+    .merge(df_age, on="FIPS", how="outer")
+
 df = df_counties.merge(df_acs, on="FIPS", how="left")
+print(f"[OK] Merged ACS data for {len(df)} counties")
 
 # Convert to numeric
 numeric_cols = [col for col in df.columns if col not in ["FIPS", "County", "State", "NAME", "state", "county"]]
-df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 
 # Calculate derived fields
-df["Pct_Pop_Aged_75_Plus"] = df["DP05_0023PE"] + df["DP05_0024PE"]
-df["Total_Pop_65_Plus"] = df[[col for col in df.columns if col.startswith('B01001_0')]].sum(axis=1)
-mover_cols = [col for col in df.columns if col.startswith('B07003_01')]
-df["Pct_65Plus_Moved_Last_5Yrs"] = df[mover_cols].sum(axis=1) / df["Total_Pop_65_Plus"] * 100 if len(mover_cols) > 0 else 0
+# Pop Aged 75+ (Count)
+age_75_cols = ["B01001_023E", "B01001_024E", "B01001_025E", "B01001_047E", "B01001_048E", "B01001_049E"]
+df["Pop_Aged_75_Plus"] = df[age_75_cols].sum(axis=1)
 
-# ------------------- 3. FIXED: Add CDC PLACES smartphone ownership (65+) -------------------
-print("Fetching CDC PLACES smartphone data (65+)...")
-base_url = "https://chronicdata.cdc.gov/resource/swc5-untb.csv"
-# FIXED: categoryid=2 (integer for SMARTPHONE), no quotes; measureid='SMARTPHONE' quoted
-where_clause = "year=2023 AND categoryid=2 AND measureid='SMARTPHONE'"
-encoded_where = urllib.parse.quote(where_clause)
-places_url = f"{base_url}?$limit=4000&$where={encoded_where}"
+age_65_cols = [col for col in df.columns if col.startswith("B01001_0") and col != "B01001_001E"]
+df["Total_Pop_65_Plus"] = df[age_65_cols].sum(axis=1)
+
+# Fill NaNs with national avgs
+df["Pct_Broadband_Access"] = df["S2801_C02_014E"].fillna(88.0)
+df["Median_Household_Income"] = df["B19013_001E"].fillna(80610)
+df["Pct_Single_Resident_HHLD"] = df["DP02_0010PE"].fillna(28.0)
+df["Pct_Bachelors_Or_Higher"] = df["DP02_0066PE"].fillna(34.0)
+df["Pct_Non_Hispanic_White"] = df["DP05_0082PE"].fillna(58.0) # Fixed variable
+df["Pct_Households_With_Computer"] = (df["B28010_002E"] / df["B28010_001E"] * 100).fillna(82.0)
+
+# Calculate Movers 65+ (Moved within last year)
+# Using B07001 (Mobility by Age)
+# "Move In" typically means In-Migration (excluding Same County moves).
+# In-Movers = Total(65+) - SameHouse(65+) - MovedSameCounty(65+)
+total_65_plus_mob = df["B07001_014E"] + df["B07001_015E"] + df["B07001_016E"]
+same_house_65_plus = df["B07001_030E"] + df["B07001_031E"] + df["B07001_032E"]
+same_county_65_plus = df["B07001_046E"] + df["B07001_047E"] + df["B07001_048E"]
+
+moved_65_plus = total_65_plus_mob - same_house_65_plus - same_county_65_plus
+
+df["Count_65Plus_Moved_Last_Year"] = moved_65_plus
+df["Pct_65Plus_Moved_Last_Year"] = (moved_65_plus / total_65_plus_mob * 100).fillna(0.0)
+
+# Total Population
+df["Total_Population"] = df["B01001_001E"]
+
+print("[OK] Derived fields calculated")
+
+# ------------------- 3. Smartphone (ACS S2801) -------------------
+df["Pct_65Plus_Smartphone_Ownership"] = df["S2801_C02_005E"].fillna(55.0)
+print(f"[OK] Mapped Smartphone data (Household level proxy)")
+
+# ------------------- 4. Urban % (local file) -------------------
+print("Loading 2020 Urban Areas Excel...")
+urban_file = "2020_UA_COUNTY.xlsx"
 try:
-    df_places = pd.read_csv(places_url)
-    smartphone = df_places[["locationid", "data_value"]]
-    smartphone["FIPS"] = smartphone["locationid"].astype(str).str.zfill(5)
-    smartphone = smartphone.rename(columns={"data_value": "Pct_65Plus_Smartphone_Ownership"})
-    df = df.merge(smartphone, on="FIPS", how="left")
-    print(f"→ Loaded {len(smartphone)} county smartphone records")
+    urban_df = pd.read_excel(urban_file)
+    urban_df["FIPS"] = urban_df["STATE"].astype(str).str.zfill(2) + urban_df["COUNTY"].astype(str).str.zfill(3)
+    urban_df["Pct_Urbanized_Population"] = urban_df["POPPCT_URB"] * 100
+    urban_df = urban_df[["FIPS", "Pct_Urbanized_Population"]]
+    df = df.merge(urban_df, on="FIPS", how="left")
+    df["Pct_Urbanized_Population"] = df["Pct_Urbanized_Population"].fillna(50.0)
+    print(f"[OK] Loaded urban data for {len(urban_df)} counties")
 except Exception as e:
-    print(f"Query failed ({e}); loading full 2023 dataset and filtering locally...")
-    full_url = f"{base_url}?$limit=50000&$where={urllib.parse.quote('year=2023')}"
-    df_full = pd.read_csv(full_url)
-    smartphone_fallback = df_full[(df_full["categoryid"] == 2) & (df_full["measureid"] == "SMARTPHONE")][["locationid", "data_value"]]
-    smartphone_fallback["FIPS"] = smartphone_fallback["locationid"].astype(str).str.zfill(5)
-    smartphone_fallback = smartphone_fallback.rename(columns={"data_value": "Pct_65Plus_Smartphone_Ownership"})
-    df = df.merge(smartphone_fallback, on="FIPS", how="left")
-    print(f"→ Fallback loaded {len(smartphone_fallback)} records")
+    print(f"Urban download error ({e}); using placeholder 50%")
+    df["Pct_Urbanized_Population"] = 50.0
 
-df["Pct_65Plus_Smartphone_Ownership"] = df["Pct_65Plus_Smartphone_Ownership"].fillna(55.0)
+# ------------------- 5. CMS Dual Eligible (Optional local file) -------------------
+print("Looking for CMS Dual Eligible data...")
+cms_file = "CMS_Dual_Eligible_2023.csv"
+try:
+    cms_df = pd.read_csv(cms_file, dtype={"FIPS": str})
+    cms_df["FIPS"] = cms_df["FIPS"].str.zfill(5)
+    if "Pct_Dual_Eligible_MA_Members" in cms_df.columns:
+        df = df.merge(cms_df[["FIPS", "Pct_Dual_Eligible_MA_Members"]], on="FIPS", how="left")
+        print(f"[OK] Loaded CMS Dual Eligible data for {len(cms_df)} counties")
+    else:
+        print(f"[WARN] {cms_file} found but missing 'Pct_Dual_Eligible_MA_Members' column")
+        df["Pct_Dual_Eligible_MA_Members"] = None
+except FileNotFoundError:
+    print(f"[INFO] {cms_file} not found. Pct_Dual_Eligible_MA_Members will be empty.")
+    df["Pct_Dual_Eligible_MA_Members"] = None
+except Exception as e:
+    print(f"[WARN] Error loading CMS data: {e}")
+    df["Pct_Dual_Eligible_MA_Members"] = None
 
-# ------------------- 4. Add Urban % (auto-download 2020 UA Excel) -------------------
-print("Downloading 2020 Urban Areas data...")
-urban_zip_url = "https://www2.census.gov/geo/docs/reference/ua/2020_UA_COUNTY.xlsx"
-urban_resp = requests.get(urban_zip_url)
-urban_df = pd.read_excel(BytesIO(urban_resp.content))
-urban_df["FIPS"] = urban_df["GEOID"].astype(str).str.zfill(5)
-urban_df["Pct_Urbanized_Population"] = (urban_df["POP_UA"] / urban_df["POP_TOTAL"]) * 100
-urban_df = urban_df[["FIPS", "Pct_Urbanized_Population"]]
-df = df.merge(urban_df, on="FIPS", how="left")
-df["Pct_Urbanized_Population"] = df["Pct_Urbanized_Population"].fillna(0.0)
-
-# ------------------- 5. Final cleanup & save -------------------
+# ------------------- 6. Final cleanup & save -------------------
 final_cols = [
     "FIPS", "County", "State",
     "Pct_Broadband_Access", "Median_Household_Income", "Pct_Single_Resident_HHLD",
-    "Pct_Bachelors_Or_Higher", "Pct_Urbanized_Population", "Pct_Pop_Aged_75_Plus",
+    "Pct_Bachelors_Or_Higher", "Pct_Urbanized_Population", "Pop_Aged_75_Plus", "Total_Population",
     "Total_Pop_65_Plus", "Pct_Non_Hispanic_White", "Pct_Dual_Eligible_MA_Members",
-    "Pct_Households_With_Computer", "Pct_65Plus_Smartphone_Ownership", "Pct_65Plus_Moved_Last_5Yrs"
+    "Pct_Households_With_Computer", "Pct_65Plus_Smartphone_Ownership", "Count_65Plus_Moved_Last_Year", "Pct_65Plus_Moved_Last_Year"
 ]
 df_final = df[final_cols].copy()
-df_final["Pct_Dual_Eligible_MA_Members"] = None  # Placeholder for CMS
 
-# Save
-output_file = "US_Counties_Census_2023_Full_Final.csv"
+output_file = "US_Counties_Census_2023_Fixed_v4.csv"
 df_final.to_csv(output_file, index=False)
-print(f"\nSUCCESS! Full file saved: {output_file}")
-print(f"Rows: {len(df_final)}")
-print("First 5 rows:")
-print(df_final.head().to_string(index=False))
+print(f"\nSUCCESS! Saved {output_file} ({len(df_final)} rows)")
+print("Sample for Autauga County (FIPS 01001):")
+print(df_final[df_final["FIPS"] == "01001"].to_string(index=False))
