@@ -1,0 +1,47 @@
+Slide 2: Objective
+
+Identify counties with high digital engagement potential for seniors
+Find markets where UnitedHealthcare has low penetration (blue sea opportunity)
+Focus on high-conversion counties for 2026 AEP and SEP campaigns
+
+Slide 3: Methodology – Two-Layer Scoring System
+
+Layer 1: Digital Market Readiness (Can they be reached online?)
+Layer 2: Market Opportunity / Penetration Gap (Is there room to grow?)
+Final filtering: Population, broadband, mover rate thresholds
+Result: 32 high-potential counties (Top 10: 8 in Florida)
+
+Slide 4: Layer 1 – Digital Market Readiness Variables
+Variables & Weights (Higher = More Important for Digital Marketing)
+
+Pct_65Plus_Moved_Last_Year: 6
+Pct_65Plus_Smartphone_Ownership: 3
+Pct_Broadband_Access: 3
+Median_Household_Income: 2
+Pct_Bachelors_Or_Higher: 1.5
+Pct_Single_Resident_HHLD: 1
+Total_Pop_65_Plus: 0.5
+Pct_Households_With_Computer: 1
+Pct_Urbanized_Population: 0.2
+Pct_Non_Hispanic_White: 0.2
+Pop_Aged_75_Plus: 0.2
+
+Purpose: Measure how likely seniors are to respond to SMS/voice/digital campaigns
+Slide 5: Layer 2 – Market Opportunity / Penetration Gap
+Key Variables
+
+United Penetration Rate (United Enrollment / Total MA Enrollment) – Lower = Better
+Overall MA Penetration (Total MA / Total 65+ Population) – Lower = More room
+Gap Score = 1 / (United Penetration + 0.05) × Weight
+
+Purpose: Find counties where UnitedHealthcare is weak while competitors are strong
+Slide 6: Final Filtering Criteria
+
+Total 65+ Population ≥ 20,000
+Broadband Access ≥ 90%
+Mover Rate (65+) ≥ 5%
+United Penetration < 20%
+
+Result: 32 counties meet criteria
+Top 10: 8 in Florida
+Top 20: 16 in Florida
