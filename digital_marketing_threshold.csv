@@ -1,0 +1,16 @@
+#,Column Name,Exact Definition / Source (2023–2025 data),Data Type,Typical High-Conversion Threshold
+1,FIPS,5-digit county FIPS code,string,
+2,County,County name,string,
+3,State,State abbreviation,string,
+4,Pct_Broadband_Access,% households with broadband subscription (S2801_C02_014E),float,>= 92%
+5,Median_Household_Income,Median household income in dollars (B19013_001E),int,>= $80,000
+6,Pct_Single_Resident_HHLD,% 1-person households (DP02_0010PE),float,>= 25%
+7,Pct_Bachelors_Or_Higher,% population 25+ with bachelor’s or higher (DP02_0066PE),float,>= 40%
+8,Pct_Urbanized_Population,% population living in urban areas/clusters (2020 Census UA file),float,>= 60%
+9,Pct_Pop_Aged_75_Plus,% population aged 75+ (DP05_0023PE + DP05_0024PE),float,>= 8%
+10,Total_Pop_65_Plus,Absolute number of residents aged 65+ (sum B01001 age brackets),int,>= 20,000
+11,Pct_Non_Hispanic_White,% non-Hispanic White alone (DP05_0077PE),float,>= 70%
+12,Pct_Households_With_Computer,% households with desktop/laptop/tablet (B28010_002PE),float,>= 82%
+13,Pct_65Plus_Smartphone_Ownership,% adults 65+ who own a smartphone (CDC PLACES 2023),float,>= 60%
+14,Pct_65Plus_Moved_Last_Year,% of 65+ who moved in the past 12 months (B07010_012E + B07010_013E),float,>= 10%
+15,Pct_Dual_Eligible_MA_Members,% of MA enrollees who are dual eligible (CMS Medicare Advantage files),float,lower % = better
