@@ -1,0 +1,88 @@
+Generate a complete, runnable Python script using the pandas library to perform a weighted, multi-criteria analysis for Medicare Advantage (MA) digital marketing targeting.
+
+1. Input Data Structure:
+Assume the input data is loaded from a CSV file named county_data_for_analysis.csv and contains the following columns exactly as listed:
+FIPS, County, State, Pct_Broadband_Access, Median_Household_Income, Pct_Single_Resident_HHLD, Pct_Bachelors_Or_Higher, Pct_Urbanized_Population, Pct_Pop_Aged_75_Plus, Total_Pop_65_Plus, Pct_Non_Hispanic_White, Pct_Households_With_Computer, Pct_65Plus_Smartphone_Ownership, Pct_65Plus_Moved_Last_Year, Pct_Dual_Eligible_MA_Members.
+
+2. Data Preprocessing & Cleaning:
+
+Replace any missing or non-numeric values in the metric columns with the column's mean.
+
+Convert all percentage columns (e.g., Pct_Broadband_Access) from floating-point percentages to decimal values (e.g., 92.0 -> 0.92) if necessary, or treat them as raw percentage numbers if they are already decimals (clarify assumption in comments).
+
+3. Weighted Scoring Logic:
+Implement the following steps to calculate a Composite_Score (Normalized Weighted Sum):
+
+A. Normalization: Normalize all score-contributing columns to a 0-1 scale. For most columns, use the standard Min-Max normalization ((X - min) / (max - min)).
+
+B. Inverse Normalization: For Pct_Dual_Eligible_MA_Members (where lower % is better), use inverse Min-Max normalization (1 - ((X - min) / (max - min)) or directly multiply the normalized value by -1 before adding it to the sum, and adjust the weight accordingly). Assume for this exercise that a lower dual-eligible percentage is favorable.
+
+C. Weights: Apply the following relative weights to the normalized columns to prioritize digital access and growth:
+
+Metric Column
+
+Weight (W)
+
+Rationale
+
+Pct_Broadband_Access
+
+3
+
+Essential Digital Gate
+
+Pct_Households_With_Computer
+
+2
+
+Digital Readiness
+
+Pct_65Plus_Smartphone_Ownership
+
+3
+
+Key Mobile Readiness
+
+Pct_65Plus_Moved_Last_Year
+
+3
+
+Market Growth/Opportunity
+
+Median_Household_Income
+
+2
+
+Affluence/LTV Proxy
+
+Pct_Bachelors_Or_Higher
+
+1
+
+Affluence/Digital Literacy Proxy
+
+Total_Pop_65_Plus
+
+1
+
+Market Size
+
+Pct_Dual_Eligible_MA_Members
+
+2 (Inverse Score)
+
+Targeting the Non-Dual Market
+
+All others
+
+0.5
+
+Secondary Demographic Context
+
+D. Calculation: The Composite_Score is the sum of (Normalized Score * Weight) for all 12 metric columns.
+
+4. Output:
+
+Display the final DataFrame columns: County, State, Total_Pop_65_Plus, Composite_Score, and the calculated Rank (based on the score, descending).
+
+The script should create mock data for 5-10 counties if the input CSV file is not present, ensuring all 15 columns are included for testing the scoring logic.
