@@ -1,0 +1,16 @@
+Category,Approximate Number of Variables,Description/Examples
+Population Basics,60–200,"Total population, male/female split, age groups (under 5, 5–17, 18–64, 65+), single-year age breakdowns"
+Race & Ethnicity,35–100,"White, Black, Hispanic, Asian, Native American, multiracial; crossed with sex or age"
+Education Attainment,45–80,"High school, some college, bachelor's, graduate degree; split by gender, race, age (25+)"
+Income,200–400,"Household median income, per capita, income brackets, quartiles, poverty rates, by family type/race"
+Housing (incl. Ownership),400–600,"Owner-occupied vs renter-occupied, mortgage status, home value ranges, monthly costs, rooms, year built"
+Employment,150,"Unemployment rate, occupation types, industry, commute time, labor force participation"
+Family & Household,80,"Marital status, household size, presence of children, family vs non-family households"
+Health Insurance,50,"Coverage by type (employer, Medicare, Medicaid), uninsured rate, by age/income"
+Language Spoken,40,"English proficiency, Spanish/Asian/Other languages at home, by age"
+Transportation,60,"Vehicles available, commute method (car, public transit, bike), time to work"
+Internet & Computer Access,30,"Broadband subscription, no internet, device ownership, by household type"
+Disability,50,"Hearing, vision, cognitive, ambulatory difficulty; by age group"
+Veterans,25,"Veteran status, service period, by gender/age"
+Birthplace & Migration,30,"Foreign-born, citizenship, year of entry, moved in last year"
+Total (most commonly used categories),"~1,500–2,000",Core variables most people pull for analysis
