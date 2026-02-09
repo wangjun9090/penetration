@@ -1,0 +1,5 @@
+Market Segment,2025 Total Enrollees,Definition & Context
+Individual (Retail),21.2 Million,"General enrollment plans open to all beneficiaries (e.g., UHC’s AARP, Humana Gold). This is where UHG reports its ~6.7M - 6.8M figure."
+SNP (Special Needs),7.3 Million,"Plans for high-need groups: D-SNPs (Duals), C-SNPs (Chronic), and I-SNPs (Institutional)."
+Group (Retiree),5.9 Million,Employer or Union-sponsored plans (EGWP) for retirees.
+Total MA (Part C),34.4 Million,The Total Parent Organization count. This is where UHG reflects its ~9.9M total footprint.
